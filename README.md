@@ -35,16 +35,16 @@ pip install -r requirements.txt
 ```
 
 ### Usage
-	1.	Place job descriptions in example_JD.txt (or modify the script to read another file).
-	2.	Run the script:
+1.	Place job descriptions in example_JD.txt (or modify the script to read another file).
+2.	Run the script:
 ```bash
     python analyze.py example_JD.txt
 ```
-    3. 	The program will output:
-	    •	Top keywords ranked by frequency
-	    •	Bigram & trigram analysis (common word pairs & triplets)
-	    •	Sentiment analysis (optional)
-	    •	Visualizations (word clouds and bar charts)
+3. 	The program will output:
+	•	Top keywords ranked by frequency
+	•	Bigram & trigram analysis (common word pairs & triplets)
+	•	Sentiment analysis (optional)
+	•	Visualizations (word clouds and bar charts)
 
 #### Optional: Specify a Custom Stopwords File
 By default, the program looks for stopwords.txt. If you want to use a different stopwords file, specify it with the --stopwords option:
