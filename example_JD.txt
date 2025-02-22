@@ -1,0 +1,39 @@
+Company: Doodoo Dynamics
+Title: Data Engineer (⚠️ FAKE JOB LISTING FOR DEMO PURPOSES ONLY)
+Location: Remote / Hybrid
+
+🚨 Disclaimer
+
+This job posting is completely fictional and exists solely for testing purposes. Doodoo Dynamics is not a real company, and no applications will be considered. If you’re seeing this in a real job board, something has gone terribly wrong.
+
+About Us
+
+At Doodoo Dynamics, we revolutionize the way businesses manage and process their data. Our cutting-edge solutions in data analytics, pipeline automation, and AI-driven insights empower companies to make smarter, faster decisions. If you thrive in a fast-paced environment and enjoy solving complex data problems, we’d love to have you on board! (If this were a real job, which it’s not.)
+
+Responsibilities
+	•	Design, build, and maintain scalable data pipelines using SQL, Python, and Spark.
+	•	Optimize ETL processes to ensure efficient data ingestion and transformation.
+	•	Collaborate with software engineers, analysts, and business teams to support data-driven decision-making.
+	•	Work with cloud-based data platforms such as AWS, Azure, or GCP to manage and store large datasets.
+	•	Develop and maintain data models and schema designs to improve database efficiency.
+	•	Implement best practices for data governance, security, and quality.
+
+Qualifications
+	•	3+ years of experience in data engineering or a similar role.
+	•	Proficiency in SQL (PostgreSQL, Snowflake, or similar) and Python (Pandas, PySpark).
+	•	Experience with cloud-based services (AWS Glue, Azure Data Factory, Google BigQuery, etc.).
+	•	Familiarity with workflow orchestration tools (Airflow, Prefect, or Dagster).
+	•	Strong understanding of data warehousing concepts and distributed computing.
+	•	Knowledge of CI/CD pipelines and version control (Git, GitHub Actions).
+	•	Excellent problem-solving skills and ability to work in an agile team environment.
+
+Bonus Points
+	•	Experience with Kafka or streaming data architectures.
+	•	Understanding of ML pipelines and feature engineering.
+	•	Background in DevOps for data (Terraform, Kubernetes, Docker).
+
+Perks & Benefits
+	•	Competitive salary & stock options (Fake money, of course.)
+	•	Fully remote work with flexible hours (Because this job doesn’t exist.)
+	•	Annual learning stipend for certifications and courses (Hypothetically speaking.)
+	•	Team retreats & hackathons (Purely imaginary.)
