@@ -41,10 +41,10 @@ pip install -r requirements.txt
     python analyze.py example_JD.txt
 ```
 3. 	The program will output:
-	•	Top keywords ranked by frequency
-	•	Bigram & trigram analysis (common word pairs & triplets)
-	•	Sentiment analysis (optional)
-	•	Visualizations (word clouds and bar charts)
+		•	Top keywords ranked by frequency
+		•	Bigram & trigram analysis (common word pairs & triplets)
+		•	Sentiment analysis (optional)
+		•	Visualizations (word clouds and bar charts)
 
 #### Optional: Specify a Custom Stopwords File
 By default, the program looks for stopwords.txt. If you want to use a different stopwords file, specify it with the --stopwords option:
