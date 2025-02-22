@@ -60,9 +60,12 @@ def plot_wordcloud_and_frequencies(unigrams, bigrams, text):
     axes[2].set_title("Top Bigrams")
     axes[2].set_xlabel("Phrases")
     axes[2].set_ylabel("Frequency")
-    axes[2].tick_params(axis='x', rotation=45)
+    axes[2].tick_params(axis='x', rotation=90)
 
     plt.tight_layout()
+
+    # Save the figure
+    plt.savefig("example_output.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 # Find contextual uses of a word
