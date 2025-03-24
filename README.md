@@ -19,7 +19,7 @@ This project analyzes job descriptions to help tailor your resume to the most fr
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/job-posting-analyzer.git
+git clone https://github.com/christianbarrera/job-posting-analyzer.git
 cd job-posting-analyzer
 ```
 
