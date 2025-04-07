@@ -43,3 +43,8 @@ job*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Text Files #
+######################
+*.txt
+!example_JD.txt
