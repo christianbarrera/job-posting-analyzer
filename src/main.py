@@ -1,6 +1,6 @@
 import argparse
 import os
-from file_utils import load_text, load_stopwords, load_cv_yaml
+from file_utils import load_text, load_stopwords, load_cv_yaml, ensure_cv_database_exists
 from text_analysis import analyze_sentiment, generate_ngrams, find_context
 from visualization import plot_wordcloud_and_frequencies
 from cv_processing import load_cv_text, extract_cv_ngrams, compare_cv_and_job
@@ -38,8 +38,13 @@ def main():
     job_bigrams = generate_ngrams(job_words, 2)
     job_trigrams = generate_ngrams(job_words, 3)
 
+    # Ensure the CV database exists
+    template_path = os.path.join(CONFIG_DIR, 'cv_database_template.yaml')
+    target_path = os.path.join(CONFIG_DIR, 'cv_database.yaml')
+    ensure_cv_database_exists(template_path, target_path)
+
     # Load CV database
-    cv_data = load_cv_yaml(os.path.join(CONFIG_DIR, 'cv_database.yaml'))
+    cv_data = load_cv_yaml(target_path)
 
     # Generate the tailored CV
     from cv_processing import generate_custom_cv

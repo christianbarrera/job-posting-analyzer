@@ -48,3 +48,7 @@ Thumbs.db
 ######################
 *.txt
 !example_JD.txt
+cv_database.yaml
+
+# Ignore personal CV database
+config/cv_database.yaml

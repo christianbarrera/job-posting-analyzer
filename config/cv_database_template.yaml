@@ -1,0 +1,51 @@
+name: Your Name
+
+summary:
+  - Add your professional summary here.
+
+experience:
+  - title: Your Job Title
+    company: Your Company
+    location: Your Location
+    start_date: YYYY-MM
+    end_date: YYYY-MM or Present
+    domain: [domain1, domain2]
+    description:
+      - Add your job responsibilities and achievements here.
+    skills: [skill1, skill2]
+
+education:
+  - degree: Your Degree
+    institution: Your Institution
+    location: Your Location
+    graduation_year: YYYY
+    thesis: Add your thesis or project details here (optional).
+    relevant_coursework:
+      - Course 1
+      - Course 2
+
+skills:
+  category1:
+    - skill1
+    - skill2
+
+narrative_blurbs:
+  category1: >
+    Add a narrative blurb for this category.
+
+projects:
+  work:
+    - name: Project Name
+      year: YYYY
+      description: >
+        Add a description of your work project here.
+
+  personal:
+    - name: Personal Project Name
+      year: YYYY
+      description: >
+        Add a description of your personal project here.
+
+languages:
+  - Language 1 (proficiency level)
+  - Language 2 (proficiency level)
