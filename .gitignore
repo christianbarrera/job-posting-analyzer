@@ -49,6 +49,15 @@ Thumbs.db
 *.txt
 !example_JD.txt
 cv_database.yaml
+cv/*
 
 # Ignore personal CV database
 config/cv_database.yaml
+
+# Ignore output files
+output/
+!output/example_output.png
+
+# Include files
+!requirements.txt
+!cv_prompt_template.txt

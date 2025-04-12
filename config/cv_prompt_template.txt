@@ -1,0 +1,19 @@
+You are a CV optimization assistant. Based on the following inputs, rewrite the bullet points
+for the experience sections to better match the job description while keeping the overall CV structure intact.
+Additionally, generate a tailored summary for the CV that highlights the candidate's fit for the role at {company_name}. Please
+include the company name somewhere in the summary. 
+The summary should be concise and strictly no longer than 425 characters.
+For the latest three work experiences, keep around 5 bullet points each.
+Focus on retaining and emphasizing number-based achievements (e.g., "reducing execution time from 3 minutes to 5 seconds")
+rather than vague descriptions (e.g., "achieving significant reductions in execution times"). Only use the number-based achievements
+that I've already provided in the CV database. Do not invent new information. 
+Use the rankings from the detailed report to prioritize the most relevant points. Do not invent new information.
+
+Job Description:
+{job_description}
+
+Detailed Report:
+{detailed_report}
+
+CV Database:
+{cv_database}

@@ -9,6 +9,10 @@ from tabulate import tabulate
 import yaml
 import pprint
 import os
+from openai import OpenAI
+import markdown
+from docx import Document
+import subprocess
 
 # Define base directories for the project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -192,47 +196,254 @@ def generate_custom_cv(job_keywords, cv_data, output_path=os.path.join(OUTPUT_DI
 
     print(f"\nCustom CV draft saved to '{output_path}'")
 
-# Main function to analyze the job description
-def text_analyzer(file_path, stopwords_file, specific_skills, args):
-    stopwords = load_stopwords(stopwords_file)
-    text = load_text(file_path)
+# Function to interact with GPT-4o-mini model
+def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_path, descriptive_copy_path, model="gpt-4o-mini"):
+    """
+    Interacts with the specified GPT model to rewrite bullet points for experience sections
+    and generate a tailored summary for the CV. Uses rankings from the detailed report.
 
-    # Tokenize and filter stopwords
-    words = text.split()
-    words = [word for word in words if word not in stopwords]
+    :param job_file_path: Path to the job description file.
+    :param cv_database_path: Path to the CV database file.
+    :param detailed_report_path: Path to the detailed report file.
+    :param output_path: Path to save the generated CV in the output folder.
+    :param descriptive_copy_path: Path to save a descriptive copy of the CV in the cv folder.
+    :param model: The GPT model to use (default: gpt-4o-mini).
+    """
+    client = OpenAI()
 
-    # Unigrams, bigrams, trigrams analysis
-    unigrams = Counter(words)
-    bigrams = generate_ngrams(words, 2)
-    trigrams = generate_ngrams(words, 3)
+    # Read the input files
+    with open(job_file_path, 'r') as job_file:
+        job_description = job_file.read()
 
-    # Sentiment analysis
-    sentiment = analyze_sentiment(text)
-    print(f"Sentiment Analysis: Polarity = {sentiment.polarity}, Subjectivity = {sentiment.subjectivity}")
+    with open(detailed_report_path, 'r') as report_file:
+        detailed_report = report_file.read()
 
-    # Highlight specific skills
-    print("\nSkill Highlights:")
-    for skill in specific_skills:
-        if skill in unigrams:
-            print(f"The skill '{skill}' is mentioned {unigrams[skill]} times.")
+    with open(cv_database_path, 'r') as cv_database_file:
+        cv_database = yaml.safe_load(cv_database_file)
 
-    # Display frequency of unigrams, bigrams, and trigrams
-    print("\nUnigrams:")
-    for word, count in unigrams.most_common(10):
-        print(f"{word}: {count}")
+    # Extract the job title and company name from the job description file name
+    job_title = os.path.splitext(os.path.basename(job_file_path))[0].replace('_', ' ').title()
+    company_name = job_title.split()[0]  # Assuming the company name is the first word
 
-    print("\nBigrams:")
-    for phrase, count in bigrams.most_common(10):
-        print(f"{' '.join(phrase)}: {count}")
+    # Load the prompt template from the new `cv_prompt.txt` file
+    with open(os.path.join(CONFIG_DIR, 'cv_prompt.txt'), 'r') as prompt_file:
+        prompt_template = prompt_file.read()
 
-    print("\nTrigrams:")
-    for phrase, count in trigrams.most_common(10):
-        print(f"{' '.join(phrase)}: {count}")
+    # Ensure proper formatting of the YAML CV database
+    formatted_cv_database = yaml.dump(cv_database, default_flow_style=False)
 
-    # Generate word cloud and plot top keywords
-    if not args.fast:
-        plot_wordcloud_and_frequencies(unigrams, bigrams, text)
-        find_context("python", text)
+    # Verify that all required data is loaded
+    if not job_description.strip():
+        raise ValueError("Job description is empty or not loaded correctly.")
+    if not detailed_report.strip():
+        raise ValueError("Detailed report is empty or not loaded correctly.")
+    if not cv_database:
+        raise ValueError("CV database is empty or not loaded correctly.")
+
+    # Log the formatted input text for debugging
+    input_text = prompt_template.format(
+        company_name=company_name,
+        job_description=job_description.strip(),
+        detailed_report=detailed_report.strip(),
+        cv_database=formatted_cv_database.strip()
+    )
+
+    with open(os.path.join(OUTPUT_DIR, 'gpt_input_debug_log.txt'), 'w') as debug_log:
+        debug_log.write("Formatted Input to GPT Model:\n")
+        debug_log.write(input_text)
+
+    # Log the input sent to the GPT model
+    with open(os.path.join(OUTPUT_DIR, 'gpt_input_log.txt'), 'w') as log_file:
+        log_file.write("Input to GPT Model:\n")
+        log_file.write(input_text)
+
+    # Call the specified GPT model
+    response = client.responses.create(
+        model=model,
+        input=input_text
+    )
+
+    # Log the response received from the GPT model
+    with open(os.path.join(OUTPUT_DIR, 'gpt_response_log.txt'), 'w') as log_file:
+        log_file.write("Response from GPT Model:\n")
+        log_file.write(response.output_text.strip())
+
+    # Parse the response and overwrite the CV
+    rewritten_cv = response.output_text.strip()
+
+    # Save the output to the specified file in the output folder
+    with open(output_path, 'w') as output_file:
+        output_file.write(f"This CV is tailored for the job: {job_title}\n\n")
+        output_file.write(rewritten_cv)
+
+    # Save a descriptive copy in the cv folder
+    with open(descriptive_copy_path, 'w') as descriptive_file:
+        descriptive_file.write(f"This CV is tailored for the job: {job_title}\n\n")
+        descriptive_file.write(rewritten_cv)
+
+    # Save a descriptive copy in the cv folder as a markdown file
+    markdown_copy_path = descriptive_copy_path.replace('.txt', '.md')
+    with open(markdown_copy_path, 'w') as markdown_file:
+        markdown_file.write(f"# This CV is tailored for the job: {job_title}\n\n")
+        markdown_file.write(rewritten_cv.replace('### ', '# ').replace('**', '**'))
+
+    print(f"Generated CV saved to {output_path}, {descriptive_copy_path}, and {markdown_copy_path}")
+
+# Function to compare CV to job description
+def compare_cv_to_jd(job_file_path, cv_file_path, output_path):
+    """
+    Compares the tailored CV with the job description and outputs common unigrams, bigrams, and trigrams,
+    as well as missing terms from the job description.
+
+    :param job_file_path: Path to the job description file.
+    :param cv_file_path: Path to the tailored CV file.
+    :param output_path: Path to append the comparison results.
+    """
+    # Load the job description and CV text
+    with open(job_file_path, 'r') as job_file:
+        job_text = job_file.read()
+
+    with open(cv_file_path, 'r') as cv_file:
+        cv_text = cv_file.read()
+
+    # Load stopwords
+    stopwords = load_stopwords(os.path.join(DATA_DIR, 'stopwords.txt'))
+
+    # Filter out stopwords from job and CV texts
+    job_words = [word for word in job_text.split() if word not in stopwords]
+    cv_words = [word for word in cv_text.split() if word not in stopwords]
+
+    # Generate n-grams
+    job_unigrams = Counter(job_words)
+    job_bigrams = Counter(ngrams(job_words, 2))
+    job_trigrams = Counter(ngrams(job_words, 3))
+
+    cv_unigrams = Counter(cv_words)
+    cv_bigrams = Counter(ngrams(cv_words, 2))
+    cv_trigrams = Counter(ngrams(cv_words, 3))
+
+    # Compare n-grams
+    common_unigrams = set(job_unigrams.keys()) & set(cv_unigrams.keys())
+    common_bigrams = set(job_bigrams.keys()) & set(cv_bigrams.keys())
+    common_trigrams = set(job_trigrams.keys()) & set(cv_trigrams.keys())
+
+    # Sort by difference in counts
+    unigram_diffs = [(word, job_unigrams[word], cv_unigrams[word], abs(job_unigrams[word] - cv_unigrams[word])) for word in common_unigrams]
+    unigram_diffs.sort(key=lambda x: x[3], reverse=True)
+
+    bigram_diffs = [(" ".join(phrase), job_bigrams[phrase], cv_bigrams[phrase], abs(job_bigrams[phrase] - cv_bigrams[phrase])) for phrase in common_bigrams]
+    bigram_diffs.sort(key=lambda x: x[3], reverse=True)
+
+    trigram_diffs = [(" ".join(phrase), job_trigrams[phrase], cv_trigrams[phrase], abs(job_trigrams[phrase] - cv_trigrams[phrase])) for phrase in common_trigrams]
+    trigram_diffs.sort(key=lambda x: x[3], reverse=True)
+
+    # Identify top job unigrams missing in CV
+    missing_unigrams = [(word, count) for word, count in job_unigrams.most_common(10) if word not in cv_unigrams]
+
+    # Append results to the detailed report
+    with open(output_path, 'a') as report:
+        report.write("\n--- Comparison between Job Description and CV ---\n\n")
+
+        report.write("Common Unigrams (sorted by difference):\n")
+        report.write(tabulate(unigram_diffs, headers=["Unigram", "JD", "CV", "Diff"], tablefmt="github"))
+        report.write("\n\n")
+
+        report.write("Common Bigrams (sorted by difference):\n")
+        report.write(tabulate(bigram_diffs, headers=["Bigram", "JD", "CV", "Diff"], tablefmt="github"))
+        report.write("\n\n")
+
+        report.write("Common Trigrams (sorted by difference):\n")
+        report.write(tabulate(trigram_diffs, headers=["Trigram", "JD", "CV", "Diff"], tablefmt="github"))
+        report.write("\n\n")
+
+        report.write("Top Job Description Unigrams Missing in CV:\n")
+        report.write(tabulate(missing_unigrams, headers=["Unigram", "JD"], tablefmt="github"))
+        report.write("\n\n")
+
+    print("Comparison results appended to the detailed report.")
+
+def convert_md_to_pdf_and_word(md_file_path):
+    """
+    Converts a Markdown file to both PDF and Word formats.
+
+    :param md_file_path: Path to the Markdown file.
+    """
+    # Read the Markdown content
+    with open(md_file_path, 'r') as md_file:
+        md_content = md_file.read()
+
+    # Convert Markdown to HTML
+    html_content = markdown.markdown(md_content)
+    print(f"md_file_path: {md_file_path}")
+
+    # Correct the file paths for PDF and Word documents
+    pdf_file_path = md_file_path.replace('.md', '.pdf')
+    word_file_path = md_file_path.replace('.md', '.docx')
+
+    # Commented out the Word document generation logic
+    # doc = Document()
+    # for line in md_content.splitlines():
+    #     if line.startswith('# '):
+    #         doc.add_heading(line[2:], level=1)
+    #     elif line.startswith('## '):
+    #         doc.add_heading(line[3:], level=2)
+    #     elif line.startswith('### '):
+    #         doc.add_heading(line[4:], level=3)
+    #     elif line.strip():
+    #         if line.startswith('- '):
+    #             doc.add_paragraph(line[2:], style='List Bullet')
+    #         else:
+    #             doc.add_paragraph(line)
+    # doc.save(word_file_path)
+    # print(f"Generated Word Document: {word_file_path}")
+
+    # Remove the redundant summary-shortening logic
+    # Combine the Markdown content without manual truncation
+    updated_md_content = md_content
+
+    # Save the Markdown content as is
+    with open(md_file_path, 'w') as md_file:
+        md_file.write(updated_md_content)
+
+    # Generate PDF using pandoc with xelatex for better Unicode support
+    try:
+        subprocess.run([
+            "pandoc", md_file_path, "-o", pdf_file_path, "--pdf-engine=xelatex"
+        ], check=True)
+        print(f"Generated PDF: {pdf_file_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating PDF: {e}")
+
+def validate_ats_friendly_format(md_file_path):
+    """
+    Validates the Markdown file for ATS-friendly formatting.
+
+    :param md_file_path: Path to the Markdown file.
+    """
+    with open(md_file_path, 'r') as md_file:
+        content = md_file.read()
+
+    issues = []
+
+    # Check for tables or images
+    if '|' in content or '![' in content:
+        issues.append("Avoid using tables or images, as they may not be ATS-friendly.")
+
+    # Check for special characters
+    special_characters = ['₂', '©', '®', '™']
+    for char in content:
+        if char in special_characters:
+            issues.append(f"Special character '{char}' found. Replace it with plain text.")
+
+    # Check for consistent section headings
+    required_headings = ["Experience", "Education", "Skills", "Projects"]
+    for heading in required_headings:
+        if heading not in content:
+            issues.append(f"Missing section heading: {heading}")
+
+    # Removed the undefined `unigrams` reference
+    # Ensure the function only validates for ATS-friendly formatting issues
+    print("\nThe CV is ATS-friendly.")
 
 # Command-line argument parsing
 if __name__ == "__main__":

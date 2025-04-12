@@ -37,39 +37,55 @@ pip install -r requirements/requirements.txt
 
 ## Usage
 
+### Updated Usage
+
 ### Running the Project
 1. Place job descriptions in the `data/` folder (e.g., `example_JD.txt`).
 2. Run the main script:
 ```bash
-python src/main.py example_JD.txt
+python src/main.py --file_path data/example_JD.txt --cv_database config/cv_database.yaml
 ```
 3. Optional arguments:
-   - `--stopwords`: Specify a custom stopwords file (default: `data/stopwords.txt`).
-   - `--cv_file`: Provide a CV file from the `cv/` folder to compare with the job description.
+   - `--cv_database`: Specify the CV database file to use (default: `config/cv_database.yaml`).
+   - `--use_model`: Use the GPT-4o-mini model for generating tailored CV suggestions.
    - `--fast`: Skip slow visualizations and context search.
+   - `--output_file`: Path to the output file for the tailored CV (default: `output/custom_cv.txt`).
 
 ### Example Command
 ```bash
-python src/main.py example_JD.txt --stopwords stopwords.txt --cv_file my_cv_data_engineering.txt --fast
+python src/main.py --file_path data/example_JD.txt --cv_database config/cv_database.yaml --use_model
 ```
 
 ### Output
 - **Custom CV**: A tailored CV will be saved in the `output/` folder (e.g., `custom_cv.txt`).
+- **GPT Output**: If `--use_model` is specified, the GPT-generated CV suggestions will be saved in `output/gpt_generated_cv.txt`.
 - **Visualizations**: Word clouds and bar charts will be saved in the `output/` folder (e.g., `example_output.png`).
 - **Console Output**: Sentiment analysis, top keywords, and n-gram comparisons will be displayed in the terminal.
 
-## Example Output
+### Detailed Report
 
-After running the script, you will see a visualization similar to this:
+After running the script, a detailed report will be generated and saved in the `output/` folder as `detailed_report.txt`. This report provides an in-depth analysis of the job description, including:
 
-<img src="output/example_output.png" alt="Example Output" width="900">
+- A breakdown of the most frequent keywords and phrases.
+- Insights into the alignment between your CV and the job description.
+- Suggestions for improving your CV to better match the job requirements.
 
-#### Optional: Specify a Custom Stopwords File
-By default, the program looks for `data/stopwords.txt`. If you want to use a different stopwords file, specify it with the `--stopwords` option:
-```bash
-python src/main.py example_JD.txt --stopwords custom_stopwords.txt
+You can use this report to refine your CV and ensure it is tailored to the specific job posting.
+
+### Quick Run Example
+```python
+from src.analyze import load_cv_yaml, generate_custom_cv, load_text
+
+# Load keywords from job description
+jd_text = load_text("data/example_JD.txt")
+job_keywords = jd_text.split()
+
+# Load CV database
+cv_data = load_cv_yaml("config/cv_database.yaml")
+
+# Generate the tailored CV
+generate_custom_cv(job_keywords, cv_data, output_path="custom_cv.txt")
 ```
-If no stopwords file is provided, the script will continue without filtering stopwords.
 
 ### Contributing
 
@@ -78,22 +94,6 @@ Feel free to submit pull requests! For major changes, please open an issue first
 ### License
 
 This project is licensed under the MIT License. See the LICENSE file for details.
-
-### Quick run
-```bash
-from analyze import load_cv_yaml, generate_custom_cv, load_stopwords, load_text
-
-# Load keywords from job description
-jd_text = load_text("birkenstock_dataengineer.txt")
-stopwords = load_stopwords("stopwords.txt")
-job_keywords = [word for word in jd_text.split() if word not in stopwords]
-
-# Load CV database
-cv_data = load_cv_yaml("cv_database.yaml")
-
-# Generate the tailored CV
-generate_custom_cv(job_keywords, cv_data, output_path="custom_cv.txt")
-```
 
 ### Further development
 Instead of actually placing and rating the relevant experience based on job, keep it chronological and instead rate and place based on relevance of the bullet points in each experience category.
