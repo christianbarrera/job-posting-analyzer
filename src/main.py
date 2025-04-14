@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--output_file", default="output/custom_cv.txt", help="Path to the output file for the tailored CV (default: output/custom_cv.txt)")
     parser.add_argument("--use_model", nargs="?", const="gpt-4o-mini", default=None, help="Specify the model to use (e.g., gpt-4o-mini, gpt-4o). If no model is specified, the default is gpt-4o-mini.")
     parser.add_argument("--cv_database", default=os.path.join(CONFIG_DIR, 'cv_database.yaml'), help="Path to the CV database file (default: config/cv_database.yaml)")
+    parser.add_argument("--generate_cover_letter", action="store_true", help="Generate a cover letter for the job posting.")
 
     args = parser.parse_args()
 
@@ -110,12 +111,18 @@ def main():
         from analyze import run_gpt_model
         descriptive_copy_path = os.path.join(CV_DIR, f"{os.path.splitext(os.path.basename(job_file_path))[0].replace('_', ' ').title().replace(' ', '_')}_CV.txt")
 
+        # Define the path to the cover letters folder
+        COVER_LETTERS_DIR = os.path.join(BASE_DIR, 'cover_letters')
+        os.makedirs(COVER_LETTERS_DIR, exist_ok=True)
+
         run_gpt_model(
             job_file_path=job_file_path,
             cv_database_path=cv_database_path,
             detailed_report_path=os.path.join(OUTPUT_DIR, 'detailed_report.txt'),
             output_path=os.path.join(OUTPUT_DIR, 'custom_cv.txt'),
             descriptive_copy_path=descriptive_copy_path,
+            cover_letter_output_path=os.path.join(OUTPUT_DIR, f"Cover_Letter_{os.path.splitext(os.path.basename(job_file_path))[0]}.txt"),
+            reference_folder=COVER_LETTERS_DIR if args.generate_cover_letter else None,
             model=model
         )
         print(f"Generated CV saved to: {descriptive_copy_path}")
@@ -139,6 +146,13 @@ def main():
         # Validate the Markdown CV for ATS-friendly formatting
         from analyze import validate_ats_friendly_format
         validate_ats_friendly_format(markdown_copy_path)
+
+        # Compare the tailored CV with the job description and append results to the rewritten CV
+        compare_cv_to_jd(
+            job_file_path=job_file_path,
+            cv_file_path=descriptive_copy_path,
+            output_path=descriptive_copy_path,  # Append results to the same file
+        )
 
 if __name__ == "__main__":
     main()

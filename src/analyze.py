@@ -13,6 +13,7 @@ from openai import OpenAI
 import markdown
 from docx import Document
 import subprocess
+from datetime import datetime
 
 # Define base directories for the project
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -20,6 +21,7 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 CONFIG_DIR = os.path.join(BASE_DIR, 'config')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 CV_DIR = os.path.join(BASE_DIR, 'cv')
+ARCHIVE_DIR = os.path.join(BASE_DIR, 'archive')
 
 # Update file paths to use the new directory structure
 def load_stopwords(file_path=os.path.join(DATA_DIR, 'stopwords.txt')):
@@ -197,16 +199,17 @@ def generate_custom_cv(job_keywords, cv_data, output_path=os.path.join(OUTPUT_DI
     print(f"\nCustom CV draft saved to '{output_path}'")
 
 # Function to interact with GPT-4o-mini model
-def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_path, descriptive_copy_path, model="gpt-4o-mini"):
+def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_path, descriptive_copy_path, cover_letter_output_path, reference_folder=None, model="gpt-4o-mini"):
     """
-    Interacts with the specified GPT model to rewrite bullet points for experience sections
-    and generate a tailored summary for the CV. Uses rankings from the detailed report.
+    Interacts with the specified GPT model to generate both a tailored CV and an optional cover letter.
 
     :param job_file_path: Path to the job description file.
     :param cv_database_path: Path to the CV database file.
     :param detailed_report_path: Path to the detailed report file.
     :param output_path: Path to save the generated CV in the output folder.
     :param descriptive_copy_path: Path to save a descriptive copy of the CV in the cv folder.
+    :param cover_letter_output_path: Path to save the generated cover letter.
+    :param reference_folder: Path to the folder containing reference cover letters (optional).
     :param model: The GPT model to use (default: gpt-4o-mini).
     """
     client = OpenAI()
@@ -221,33 +224,33 @@ def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_
     with open(cv_database_path, 'r') as cv_database_file:
         cv_database = yaml.safe_load(cv_database_file)
 
+    # Read reference cover letters if provided
+    reference_texts = []
+    if reference_folder:
+        for filename in os.listdir(reference_folder):
+            if filename.endswith('.txt'):
+                with open(os.path.join(reference_folder, filename), 'r') as ref_file:
+                    reference_texts.append(ref_file.read())
+    combined_references = "\n\n".join(reference_texts)
+
     # Extract the job title and company name from the job description file name
     job_title = os.path.splitext(os.path.basename(job_file_path))[0].replace('_', ' ').title()
     company_name = job_title.split()[0]  # Assuming the company name is the first word
 
-    # Load the prompt template from the new `cv_prompt.txt` file
+    # Load the prompt template
     with open(os.path.join(CONFIG_DIR, 'cv_prompt.txt'), 'r') as prompt_file:
         prompt_template = prompt_file.read()
 
-    # Ensure proper formatting of the YAML CV database
-    formatted_cv_database = yaml.dump(cv_database, default_flow_style=False)
-
-    # Verify that all required data is loaded
-    if not job_description.strip():
-        raise ValueError("Job description is empty or not loaded correctly.")
-    if not detailed_report.strip():
-        raise ValueError("Detailed report is empty or not loaded correctly.")
-    if not cv_database:
-        raise ValueError("CV database is empty or not loaded correctly.")
-
-    # Log the formatted input text for debugging
+    # Format the input for the GPT model
     input_text = prompt_template.format(
         company_name=company_name,
         job_description=job_description.strip(),
         detailed_report=detailed_report.strip(),
-        cv_database=formatted_cv_database.strip()
+        cv_database=yaml.dump(cv_database, default_flow_style=False).strip(),
+        reference_cover_letters=combined_references.strip()
     )
 
+    # Log the formatted input text for debugging
     with open(os.path.join(OUTPUT_DIR, 'gpt_input_debug_log.txt'), 'w') as debug_log:
         debug_log.write("Formatted Input to GPT Model:\n")
         debug_log.write(input_text)
@@ -257,37 +260,74 @@ def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_
         log_file.write("Input to GPT Model:\n")
         log_file.write(input_text)
 
-    # Call the specified GPT model
+    # Call the GPT model
     response = client.responses.create(
         model=model,
         input=input_text
     )
 
-    # Log the response received from the GPT model
-    with open(os.path.join(OUTPUT_DIR, 'gpt_response_log.txt'), 'w') as log_file:
-        log_file.write("Response from GPT Model:\n")
-        log_file.write(response.output_text.strip())
+    # Parse the response into CV and cover letter using a flexible delimiter
+    import re
 
-    # Parse the response and overwrite the CV
-    rewritten_cv = response.output_text.strip()
+    # Search for a line containing 'Cover Letter' (case-insensitive)
+    cover_letter_match = re.search(r"(?i)^.*cover letter.*$", response.output_text, re.MULTILINE)
+    if cover_letter_match:
+        delimiter = cover_letter_match.group(0)
+        response_parts = response.output_text.strip().split(delimiter)
+    else:
+        response_parts = [response.output_text.strip()]
 
-    # Save the output to the specified file in the output folder
-    with open(output_path, 'w') as output_file:
-        output_file.write(f"This CV is tailored for the job: {job_title}\n\n")
-        output_file.write(rewritten_cv)
+    if len(response_parts) != 2:
+        print("Warning: Unexpected response format from GPT model. Appending raw response.")
+        with open(output_path, 'a') as output_file:
+            output_file.write("\n\n--- RAW RESPONSE ---\n\n")
+            output_file.write(response.output_text.strip())
+        return
 
-    # Save a descriptive copy in the cv folder
-    with open(descriptive_copy_path, 'w') as descriptive_file:
-        descriptive_file.write(f"This CV is tailored for the job: {job_title}\n\n")
-        descriptive_file.write(rewritten_cv)
+    rewritten_cv, cover_letter = response_parts
 
-    # Save a descriptive copy in the cv folder as a markdown file
+    # Dynamically determine file paths based on job title, company name, and timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    job_title = os.path.splitext(os.path.basename(job_file_path))[0].replace('_', ' ').title()
+    company_name = job_title.split()[0]  # Assuming the company name is the first word
+ 
+    # Define a helper function to write the complete CV (CV content + cover letter) in one operation
+    def write_cv_file(file_path, header, cv_body, cover_letter):
+        with open(file_path, 'w') as f:
+            f.write(header)
+            f.write(cv_body.strip())
+            f.write("\n\n--- COVER LETTER ---\n\n")
+            f.write(cover_letter.strip())
+ 
+    # Prepare a header to be included in each file
+    header = f"This CV is tailored for the job: {job_title}\n\n"
+ 
+    # Define file paths for the different CV outputs
+    descriptive_copy_path = os.path.join(CV_DIR, f"{job_title.replace(' ', '_')}_CV.txt")
+    archive_file_path = os.path.join(ARCHIVE_DIR, f"custom_cv_{timestamp}.txt")
+    custom_cv_path = os.path.join(OUTPUT_DIR, 'custom_cv.txt')
     markdown_copy_path = descriptive_copy_path.replace('.txt', '.md')
-    with open(markdown_copy_path, 'w') as markdown_file:
-        markdown_file.write(f"# This CV is tailored for the job: {job_title}\n\n")
-        markdown_file.write(rewritten_cv.replace('### ', '# ').replace('**', '**'))
 
-    print(f"Generated CV saved to {output_path}, {descriptive_copy_path}, and {markdown_copy_path}")
+    # Write all CV outputs using the helper function
+    write_cv_file(output_path, header, rewritten_cv, cover_letter)
+    print(f"Generated CV saved to {output_path}")
+
+    write_cv_file(descriptive_copy_path, header, rewritten_cv, cover_letter)
+    print(f"Descriptive CV copy saved to {descriptive_copy_path}")
+
+    write_cv_file(custom_cv_path, header, rewritten_cv, cover_letter)
+    print(f"Custom CV with cover letter written to: {custom_cv_path}")
+
+    write_cv_file(archive_file_path, header, rewritten_cv, cover_letter)
+    print(f"Archive CV saved to {archive_file_path}")
+
+    # Write to the .md file
+    write_cv_file(markdown_copy_path, header, rewritten_cv, cover_letter)
+    print(f"Markdown CV saved to {markdown_copy_path}")
+
+    print(header)
+    print(rewritten_cv)
+    print(cover_letter)
 
 # Function to compare CV to job description
 def compare_cv_to_jd(job_file_path, cv_file_path, output_path):
@@ -432,7 +472,7 @@ def validate_ats_friendly_format(md_file_path):
     # Check for special characters
     special_characters = ['₂', '©', '®', '™']
     for char in content:
-        if char in special_characters:
+        if (char in special_characters):
             issues.append(f"Special character '{char}' found. Replace it with plain text.")
 
     # Check for consistent section headings
