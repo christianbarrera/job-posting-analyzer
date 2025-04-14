@@ -31,5 +31,5 @@ def plot_wordcloud_and_frequencies(unigrams, bigrams, text):
     plt.tight_layout()
 
     # Save the figure
-    plt.savefig("output/example_output.png", dpi=300, bbox_inches="tight")
+    plt.savefig("output/output.png", dpi=300, bbox_inches="tight")
     plt.show()  # Commented out
