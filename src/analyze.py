@@ -231,7 +231,7 @@ def run_gpt_model(job_file_path, cv_database_path, detailed_report_path, output_
             if filename.endswith('.txt'):
                 with open(os.path.join(reference_folder, filename), 'r') as ref_file:
                     reference_texts.append(ref_file.read())
-    combined_references = "\n\n".join(reference_texts)
+    combined_references = "\n\n===== COVER LETTER SEPARATOR =====\n\n".join(reference_texts)
 
     # Extract the job title and company name from the job description file name
     job_title = os.path.splitext(os.path.basename(job_file_path))[0].replace('_', ' ').title()
